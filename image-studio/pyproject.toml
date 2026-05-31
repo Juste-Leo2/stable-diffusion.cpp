@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prism-image-studio"
+version = "0.1.0"
+description = "PrismML image studio: FastAPI backend + Next.js frontend for Flux2Klein image generation."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0,<1.0",
+    "mflux",
+    "mlx",
+    "pillow>=11.0.0,<13.0.0",
+    "uvicorn[standard]>=0.30.0,<1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/PrismML-Eng/image-studio"
+Repository = "https://github.com/PrismML-Eng/image-studio"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
+
+[tool.uv.sources]
+mflux = { git = "https://github.com/PrismML-Eng/mflux-prism.git", rev = "bcd13e83b7fcfd76186c98ef322dd9cf28e996c1" }
+mlx = { git = "https://github.com/PrismML-Eng/mlx.git", rev = "b9effaf65ecce0e99a2fb23c8962d34eff95b625" }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

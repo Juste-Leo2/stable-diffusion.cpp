@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant light (&:where(.light, .light *));
+
+/* ── Light theme (default — Prism ML brand) ─────────────────────────────── */
+:root {
+  --background: #e9e4df;
+  --surface: rgba(206, 190, 189, 0.22);
+  --surface-raised: rgba(243, 239, 234, 0.78);
+  --surface-strong: rgba(252, 249, 246, 0.88);
+  --foreground: #1c2030;
+  --muted: #7a756e;
+  --muted-strong: #3d3830;
+  --border: rgba(28, 32, 48, 0.1);
+  --border-strong: rgba(28, 32, 48, 0.16);
+  --accent: #1c2030;
+  --accent-strong: #0e1220;
+  --accent-soft: rgba(28, 32, 48, 0.07);
+  --accent-ring: rgba(28, 32, 48, 0.18);
+  --cta-bg: #1c2030;
+  --cta-ink: #e9e4df;
+  --shimmer: rgba(255, 255, 255, 0.2);
+  --halo-a: rgba(206, 190, 189, 0.55);
+  --halo-b: rgba(28, 32, 48, 0.04);
+  --danger: #b91c1c;
+  --danger-soft: rgba(185, 28, 28, 0.09);
+  --panel-shadow: 0 20px 56px -38px rgba(28, 32, 48, 0.16), 0 1px 0 rgba(255, 255, 255, 0.82) inset;
+  --panel-shadow-strong: 0 36px 90px -56px rgba(28, 32, 48, 0.22), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  --ambient-a: rgba(206, 190, 189, 0.45);
+  --ambient-b: rgba(28, 32, 48, 0.04);
+  --ambient-c: rgba(28, 32, 48, 0.02);
+  --grid-line: rgba(28, 32, 48, 0.07);
+}
+
+/* ── Dark theme ─────────────────────────────────────────────────────────── */
+html.dark {
+  --background: #1a1c24;
+  --surface: rgba(26, 30, 42, 0.55);
+  --surface-raised: rgba(32, 36, 50, 0.72);
+  --surface-strong: rgba(42, 47, 64, 0.84);
+  --foreground: #e9e4df;
+  --muted: #9a9590;
+  --muted-strong: #cfc8be;
+  --border: rgba(233, 228, 223, 0.1);
+  --border-strong: rgba(233, 228, 223, 0.16);
+  --accent: #cebebd;
+  --accent-strong: #e9e4df;
+  --accent-soft: rgba(233, 228, 223, 0.1);
+  --accent-ring: rgba(233, 228, 223, 0.22);
+  --cta-bg: #e9e4df;
+  --cta-ink: #1a1c24;
+  --shimmer: rgba(233, 228, 223, 0.14);
+  --halo-a: rgba(233, 228, 223, 0.06);
+  --halo-b: rgba(206, 190, 189, 0.04);
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.14);
+  --panel-shadow: 0 30px 72px -54px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  --panel-shadow-strong: 0 46px 120px -68px rgba(0, 0, 0, 0.96), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  --ambient-a: rgba(233, 228, 223, 0.08);
+  --ambient-b: rgba(233, 228, 223, 0.05);
+  --ambient-c: rgba(233, 228, 223, 0.02);
+  --grid-line: rgba(233, 228, 223, 0.05);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-strong: var(--surface-strong);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ring: var(--accent-ring);
+  --color-cta-bg: var(--cta-bg);
+  --color-cta-ink: var(--cta-ink);
+  --color-shimmer: var(--shimmer);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--font-rethink-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+html {
+  background: var(--background);
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 12%, var(--ambient-a), transparent 28%),
+    radial-gradient(circle at 86% 8%, var(--ambient-b), transparent 24%),
+    radial-gradient(circle at 52% 100%, var(--ambient-c), transparent 30%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), var(--grid-line) calc(100% - 1px)),
+    linear-gradient(transparent 0, transparent calc(100% - 1px), var(--grid-line) calc(100% - 1px));
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.5), transparent 80%);
+  opacity: 0.5;
+}
+
+html.dark body::before {
+  opacity: 0.45;
+}
+
+body::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 20% 30%, var(--halo-a), transparent 22%),
+    radial-gradient(circle at 78% 18%, var(--halo-b), transparent 24%),
+    radial-gradient(circle at 50% 100%, var(--halo-b), transparent 26%);
+  filter: blur(16px);
+  opacity: 0.65;
+}
+
+html.dark body::after {
+  opacity: 0.7;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--foreground);
+}
+
+@keyframes bonsai-shimmer {
+  0% { transform: translateX(-160%); }
+  100% { transform: translateX(160%); }
+}
+
+@keyframes bonsai-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bonsai-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bonsai-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.04); }
+}

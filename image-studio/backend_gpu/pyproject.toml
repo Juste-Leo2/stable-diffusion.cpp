@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prism-image-studio-backend-gpu"
+version = "0.0.1"
+description = "GPU (gemlite/HQQ on H100) inference server for prism-image-studio. Phase-5 prep skeleton."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pillow>=10.4",
+    "diffusers>=0.38.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27",
+]
+
+[tool.setuptools]
+packages = ["backend_gpu"]
+package-dir = {"backend_gpu" = "."}

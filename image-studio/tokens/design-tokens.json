@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "name": "Bonsai",
+    "source": [
+      "frontend/app/globals.css",
+      "frontend/app/layout.tsx",
+      "frontend/components/ui/button.tsx",
+      "frontend/components/ui/input.tsx",
+      "frontend/components/ui/textarea.tsx"
+    ],
+    "updated": "2026-04-23"
+  },
+  "color": {
+    "brandInk": { "value": "#262C35" },
+    "brandSand": { "value": "#E8E4DF" },
+    "background": { "value": "#101014" },
+    "surface": { "value": "#18181B" },
+    "surfaceRaised": { "value": "#1F1F23" },
+    "surfaceStrong": { "value": "#26262B" },
+    "foreground": { "value": "#EEEAE5" },
+    "muted": { "value": "#A1A1AA" },
+    "mutedStrong": { "value": "#D4D4D8" },
+    "border": { "value": "rgba(232,228,223,0.08)" },
+    "borderStrong": { "value": "rgba(232,228,223,0.16)" },
+    "accent": { "value": "#E8E4DF" },
+    "accentStrong": { "value": "#F5F1EC" },
+    "accentSoft": { "value": "rgba(232,228,223,0.12)" },
+    "accentRing": { "value": "rgba(232,228,223,0.28)" },
+    "accentContrast": { "value": "#18181B" },
+    "danger": { "value": "#EF4444" },
+    "dangerSoft": { "value": "rgba(239,68,68,0.14)" }
+  },
+  "spacing": {
+    "1": 4,
+    "1_5": 6,
+    "2": 8,
+    "2_5": 10,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24,
+    "7": 28,
+    "8": 32,
+    "9": 36,
+    "10": 40,
+    "12": 48
+  },
+  "radius": {
+    "control": 16,
+    "card": 24,
+    "panel": 28,
+    "pill": 999
+  },
+  "typography": {
+    "fontFamilies": {
+      "sans": "Manrope",
+      "mono": "IBM Plex Mono"
+    },
+    "sizes": {
+      "caption": 10,
+      "meta": 11,
+      "label": 12,
+      "bodySmall": 14,
+      "body": 16,
+      "bodyLarge": 18,
+      "title": 24
+    },
+    "lineHeights": {
+      "caption": 14,
+      "meta": 16,
+      "bodySmall": 20,
+      "body": 24,
+      "bodyLarge": 28,
+      "title": 32
+    },
+    "tracking": {
+      "caps": 0.22,
+      "capsWide": 0.28
+    }
+  }
+}

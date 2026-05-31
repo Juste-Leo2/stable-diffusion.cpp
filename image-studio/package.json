@@ -1,0 +1,8 @@
+{
+  "name": "prism-image-studio",
+  "private": true,
+  "scripts": {
+    "tokens": "python3 scripts/gen-design-tokens.py",
+    "snapshot-openapi": "./scripts/snapshot-openapi.sh"
+  }
+}

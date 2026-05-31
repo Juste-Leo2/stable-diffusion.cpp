@@ -1,0 +1,77 @@
+{
+  "$schema": "https://schemas.bonsai.app/design-tokens/v1.json",
+  "brand": "bonsai",
+  "version": 1,
+  "defaultTheme": "dark",
+  "palette": {
+    "navy": "#262C35",
+    "cream": "#E8E4DF",
+    "zinc900": "#18181B",
+    "creamStrong": "#F5F1EC",
+    "inkStrong": "#18181B",
+    "danger": "#EF4444"
+  },
+  "themes": {
+    "dark": {
+      "background": "#18181B",
+      "surface": "#1F1F23",
+      "surfaceRaised": "#26262B",
+      "surfaceStrong": "#2C2C31",
+      "foreground": "#E8E4DF",
+      "muted": "#A1A1AA",
+      "mutedStrong": "#D4D4D8",
+      "border": "rgba(232, 228, 223, 0.08)",
+      "borderStrong": "rgba(232, 228, 223, 0.16)",
+      "accent": "#E8E4DF",
+      "accentStrong": "#F5F1EC",
+      "accentSoft": "rgba(232, 228, 223, 0.12)",
+      "accentRing": "rgba(232, 228, 223, 0.28)",
+      "ctaBg": "#E8E4DF",
+      "ctaInk": "#262C35",
+      "shimmer": "rgba(232, 228, 223, 0.10)",
+      "haloA": "rgba(232, 228, 223, 0.04)",
+      "haloB": "rgba(232, 228, 223, 0.03)",
+      "danger": "#EF4444",
+      "dangerSoft": "rgba(239, 68, 68, 0.14)"
+    },
+    "light": {
+      "background": "#E8E4DF",
+      "surface": "#F1EDE7",
+      "surfaceRaised": "#F7F3EE",
+      "surfaceStrong": "#FBF8F3",
+      "foreground": "#262C35",
+      "muted": "#6B7280",
+      "mutedStrong": "#374151",
+      "border": "rgba(38, 44, 53, 0.10)",
+      "borderStrong": "rgba(38, 44, 53, 0.20)",
+      "accent": "#262C35",
+      "accentStrong": "#18181B",
+      "accentSoft": "rgba(38, 44, 53, 0.10)",
+      "accentRing": "rgba(38, 44, 53, 0.26)",
+      "ctaBg": "#262C35",
+      "ctaInk": "#E8E4DF",
+      "shimmer": "rgba(38, 44, 53, 0.10)",
+      "haloA": "rgba(38, 44, 53, 0.05)",
+      "haloB": "rgba(38, 44, 53, 0.03)",
+      "danger": "#EF4444",
+      "dangerSoft": "rgba(239, 68, 68, 0.14)"
+    }
+  },
+  "typography": {
+    "fontFamilySans": "Manrope, ui-sans-serif, system-ui, sans-serif",
+    "fontFamilyMono": "IBM Plex Mono, ui-monospace, SFMono-Regular, monospace"
+  },
+  "radius": {
+    "sm": "8px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px",
+    "pill": "9999px"
+  },
+  "motion": {
+    "swayTop": "9.4s ease-in-out infinite",
+    "swayMiddle": "11.2s ease-in-out infinite",
+    "swayLwing": "8.6s ease-in-out infinite",
+    "swayRwing": "10.1s ease-in-out infinite"
+  }
+}
