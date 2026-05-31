@@ -13,3 +13,4 @@ output*.png
 models*
 *.log
 preview.png
+outputs/
