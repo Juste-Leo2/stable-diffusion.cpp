@@ -1,9 +1,6 @@
 name: Close inactive PRs
 
 on:
-  schedule:
-    # Run daily. GitHub cron schedules use UTC.
-    - cron: "30 1 * * *"
   workflow_dispatch:
     inputs:
       debug_only:

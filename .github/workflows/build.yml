@@ -7,43 +7,6 @@ on:
         description: "Create new release"
         required: true
         type: boolean
-  push:
-    branches:
-      - master
-      - ci
-    paths:
-      [
-        ".github/workflows/**",
-        ".dockerignore",
-        "Dockerfile*",
-        "**/CMakeLists.txt",
-        "**/Makefile",
-        "**/*.h",
-        "**/*.hpp",
-        "**/*.c",
-        "**/*.cpp",
-        "**/*.cu",
-        "examples/server/frontend",
-        "examples/server/frontend/**",
-      ]
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      [
-        ".github/workflows/**",
-        ".dockerignore",
-        "Dockerfile*",
-        "**/CMakeLists.txt",
-        "**/Makefile",
-        "**/*.h",
-        "**/*.hpp",
-        "**/*.c",
-        "**/*.cpp",
-        "**/*.cu",
-        "examples/server/frontend",
-        "examples/server/frontend/**",
-      ]
-
 env:
   BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
 
