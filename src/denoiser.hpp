@@ -9,7 +9,6 @@
 #include <utility>
 
 #include "ggml_extend.hpp"
-#include "gits_noise.inl"
 #include "guidance.h"
 #include "tensor.hpp"
 
@@ -211,37 +210,7 @@ struct AYSScheduler : SigmaScheduler {
     }
 };
 
-/*
- * GITS Scheduler: https://github.com/zju-pi/diff-sampler/tree/main/gits-main
- */
-struct GITSScheduler : SigmaScheduler {
-    std::vector<float> get_sigmas(uint32_t n, float sigma_min, float sigma_max, t_to_sigma_t t_to_sigma) override {
-        if (sigma_max <= 0.0f) {
-            return std::vector<float>{};
-        }
-
-        std::vector<float> sigmas;
-
-        // Assume coeff is provided (replace 1.20 with your dynamic coeff)
-        float coeff = 1.20f;  // Default coefficient
-        // Normalize coeff to the closest value in the array (0.80 to 1.50)
-        coeff = std::round(coeff * 20.0f) / 20.0f;  // Round to the nearest 0.05
-        // Calculate the index based on the coefficient
-        int index = static_cast<int>((coeff - 0.80f) / 0.05f);
-        // Ensure the index is within bounds
-        index                                                 = std::max(0, std::min(index, static_cast<int>(GITS_NOISE.size() - 1)));
-        const std::vector<std::vector<float>>& selected_noise = *GITS_NOISE[index];
-
-        if (n <= 20) {
-            sigmas = (selected_noise)[n - 2];
-        } else {
-            sigmas = log_linear_interpolation(selected_noise.back(), n + 1);
-        }
-
-        sigmas[n] = 0.0f;
-        return sigmas;
-    }
-};
+// GITSScheduler removed (requires GITS_NOISE which is not available)
 
 struct SGMUniformScheduler : SigmaScheduler {
     std::vector<float> get_sigmas(uint32_t n, float sigma_min_in, float sigma_max_in, t_to_sigma_t t_to_sigma_func) override {
@@ -594,8 +563,7 @@ struct Denoiser {
                 scheduler = std::make_shared<AYSScheduler>(version);
                 break;
             case GITS_SCHEDULER:
-                LOG_INFO("get_sigmas with GITS scheduler");
-                scheduler = std::make_shared<GITSScheduler>();
+                LOG_ERROR("get_sigmas with GITS scheduler is not supported");
                 break;
             case SGM_UNIFORM_SCHEDULER:
                 LOG_INFO("get_sigmas with SGM Uniform scheduler");

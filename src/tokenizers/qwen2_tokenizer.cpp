@@ -1,7 +1,6 @@
 #include "qwen2_tokenizer.h"
 
 #include "util.h"
-#include "vocab/vocab.h"
 
 void Qwen2Tokenizer::load_from_merges(const std::string& merges_utf8_str) {
     auto byte_unicode_pairs = bytes_to_unicode();
@@ -91,6 +90,7 @@ Qwen2Tokenizer::Qwen2Tokenizer(const std::string& merges_utf8_str) {
     if (merges_utf8_str.size() > 0) {
         load_from_merges(merges_utf8_str);
     } else {
-        load_from_merges(load_qwen2_merges());
+        LOG_WARN("Qwen2Tokenizer: no merges provided, using fallback-like empty string");
+        load_from_merges("");
     }
 }

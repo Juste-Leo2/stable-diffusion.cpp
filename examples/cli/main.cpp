@@ -600,28 +600,6 @@ int main(int argc, const char* argv[]) {
     LOG_DEBUG("%s", ctx_params.to_string().c_str());
     LOG_DEBUG("%s", gen_params.to_string().c_str());
 
-    if (cli_params.mode == CONVERT) {
-        bool success = convert(ctx_params.model_path.c_str(),
-                               ctx_params.vae_path.c_str(),
-                               cli_params.output_path.c_str(),
-                               ctx_params.wtype,
-                               ctx_params.tensor_type_rules.c_str(),
-                               cli_params.convert_name);
-        if (!success) {
-            LOG_ERROR("convert '%s'/'%s' to '%s' failed",
-                      ctx_params.model_path.c_str(),
-                      ctx_params.vae_path.c_str(),
-                      cli_params.output_path.c_str());
-            return 1;
-        } else {
-            LOG_INFO("convert '%s'/'%s' to '%s' success",
-                     ctx_params.model_path.c_str(),
-                     ctx_params.vae_path.c_str(),
-                     cli_params.output_path.c_str());
-            return 0;
-        }
-    }
-
     bool vae_decode_only = true;
 
     auto load_image_and_update_size = [&](const std::string& path,
@@ -700,14 +678,7 @@ int main(int argc, const char* argv[]) {
             LOG_ERROR("load image from '%s' failed", gen_params.control_image_path.c_str());
             return 1;
         }
-        if (cli_params.canny_preprocess) {  // apply preprocessor
-            preprocess_canny(gen_params.control_image.get(),
-                             0.08f,
-                             0.08f,
-                             0.8f,
-                             1.0f,
-                             false);
-        }
+
     }
 
     if (!gen_params.control_video_path.empty()) {
@@ -794,37 +765,7 @@ int main(int argc, const char* argv[]) {
         }
     }
 
-    int upscale_factor = 4;  // unused for RealESRGAN_x4plus_anime_6B.pth
-    if (ctx_params.esrgan_path.size() > 0 && gen_params.upscale_repeats > 0) {
-        UpscalerCtxPtr upscaler_ctx(new_upscaler_ctx(ctx_params.esrgan_path.c_str(),
-                                                     ctx_params.offload_params_to_cpu,
-                                                     ctx_params.diffusion_conv_direct,
-                                                     ctx_params.n_threads,
-                                                     gen_params.upscale_tile_size,
-                                                     ctx_params.backend.c_str(),
-                                                     ctx_params.params_backend.c_str()));
 
-        if (upscaler_ctx == nullptr) {
-            LOG_ERROR("new_upscaler_ctx failed");
-        } else {
-            for (int i = 0; i < num_results; i++) {
-                if (results[i].data == nullptr) {
-                    continue;
-                }
-                SDImageOwner current_image(results[i]);
-                results[i] = {0, 0, 0, nullptr};
-                for (int u = 0; u < gen_params.upscale_repeats; ++u) {
-                    SDImageOwner upscaled_image(upscale(upscaler_ctx.get(), current_image.get(), upscale_factor));
-                    if (upscaled_image.get().data == nullptr) {
-                        LOG_ERROR("upscale failed");
-                        break;
-                    }
-                    current_image = std::move(upscaled_image);
-                }
-                results[i] = current_image.release();  // Set the final upscaled image as the result
-            }
-        }
-    }
 
     if (!save_results(cli_params, ctx_params, gen_params, results.data(), num_results, generated_audio)) {
         free_sd_audio(generated_audio);

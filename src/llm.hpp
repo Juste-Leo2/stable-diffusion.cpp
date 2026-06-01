@@ -22,9 +22,6 @@
 #include "json.hpp"
 #include "rope.hpp"
 #include "tokenizers/bpe_tokenizer.h"
-#include "tokenizers/gemma_tokenizer.h"
-#include "tokenizers/gpt_oss_tokenizer.h"
-#include "tokenizers/mistral_tokenizer.h"
 #include "tokenizers/qwen2_tokenizer.h"
 
 namespace LLM {
@@ -1756,11 +1753,7 @@ namespace LLM {
                     const std::string prefix                       = "",
                     bool enable_vision                             = false)
             : model(arch, backend, params_backend, tensor_storage_map, prefix, enable_vision) {
-            if (arch == LLMArch::MISTRAL_SMALL_3_2 || arch == LLMArch::MINISTRAL_3_3B) {
-                tokenizer = std::make_shared<MistralTokenizer>();
-            } else if (arch == LLMArch::GPT_OSS_20B) {
-                tokenizer = std::make_shared<GPTOSSTokenizer>();
-            } else {
+            {
                 tokenizer = std::make_shared<Qwen2Tokenizer>();
             }
         }

@@ -249,9 +249,6 @@ protected:
 
     bool init_from_gguf_file(const std::string& file_path, const std::string& prefix = "");
     bool init_from_safetensors_file(const std::string& file_path, const std::string& prefix = "");
-    bool init_from_torch_zip_file(const std::string& file_path, const std::string& prefix = "");
-    bool init_from_torch_legacy_file(const std::string& file_path, const std::string& prefix = "");
-    bool init_from_diffusers_file(const std::string& file_path, const std::string& prefix = "");
 
 public:
     bool init_from_file(const std::string& file_path, const std::string& prefix = "");

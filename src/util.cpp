@@ -1,4 +1,5 @@
 #include "util.h"
+#include "ggml_extend.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -13,7 +14,6 @@
 #include <thread>
 #include <unordered_set>
 #include <vector>
-#include "preprocessing.hpp"
 
 #if defined(__APPLE__) && defined(__MACH__)
 #include <sys/sysctl.h>
@@ -657,7 +657,19 @@ sd_image_t tensor_to_sd_image(const sd::Tensor<float>& tensor, int frame_index) 
     int channel   = static_cast<int>(shape[shape.size() == 5 ? 3 : 2]);
     uint8_t* data = (uint8_t*)malloc(static_cast<size_t>(width * height * channel));
     GGML_ASSERT(data != nullptr);
-    preprocessing_tensor_frame_to_sd_image(tensor, frame_index, data);
+    for (int iy = 0; iy < height; iy++) {
+        for (int ix = 0; ix < width; ix++) {
+            for (int ic = 0; ic < channel; ic++) {
+                float value;
+                if (shape.size() == 5) {
+                    value = tensor.index(ix, iy, ic, frame_index, 0);
+                } else {
+                    value = tensor.index(ix, iy, ic, 0);
+                }
+                *(data + iy * width * channel + ix * channel + ic) = (uint8_t)(value * 255.0f);
+            }
+        }
+    }
     return {
         static_cast<uint32_t>(width),
         static_cast<uint32_t>(height),
