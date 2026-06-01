@@ -178,22 +178,8 @@ struct AYSScheduler : SigmaScheduler {
         std::vector<float> inputs;
         std::vector<float> results(n + 1);
 
-        if (sd_version_is_sd2((SDVersion)version)) {
-            LOG_WARN("AYS_SCHEDULER not designed for SD2.X models");
-        } /* fallthrough */
-        else if (sd_version_is_sd1((SDVersion)version)) {
-            LOG_INFO("AYS_SCHEDULER using SD1.5 noise levels");
-            inputs = noise_levels[0];
-        } else if (sd_version_is_sdxl((SDVersion)version)) {
-            LOG_INFO("AYS_SCHEDULER using SDXL noise levels");
-            inputs = noise_levels[1];
-        } else if (version == VERSION_SVD) {
-            LOG_INFO("AYS_SCHEDULER using SVD noise levels");
-            inputs = noise_levels[2];
-        } else {
-            LOG_ERROR("Version not compatible with AYS_SCHEDULER scheduler");
-            return results;
-        }
+        LOG_ERROR("Version not compatible with AYS_SCHEDULER scheduler");
+        return results;
 
         /* Stretches those pre-calculated reference levels out to the desired
          * size using log-linear interpolation */

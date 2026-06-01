@@ -522,18 +522,9 @@ public:
     std::vector<bool> time_upscale   = {false, true, true};
 
 public:
-    TAEHV(bool decode_only = true, SDVersion version = VERSION_WAN2, bool is_wide = false)
+    TAEHV(bool decode_only = true, SDVersion version = VERSION_FLUX2, bool is_wide = false)
         : decode_only(decode_only), version(version), is_wide(is_wide) {
         int patch = 1;
-        if (version == VERSION_WAN2_2_TI2V) {
-            z_channels = 48;
-            patch      = 2;
-        } else if (sd_version_is_ltxav(version)) {
-            z_channels     = 128;
-            patch          = 4;
-            time_downscale = {true, true, true};
-            time_upscale   = {true, true, true};
-        }
         blocks["decoder"] = std::shared_ptr<GGMLBlock>(new TinyVideoDecoder(z_channels, patch, time_upscale, is_wide));
         if (!decode_only) {
             blocks["encoder"] = std::shared_ptr<GGMLBlock>(new TinyVideoEncoder(z_channels, patch, time_downscale));
@@ -542,15 +533,7 @@ public:
 
     ggml_tensor* decode(GGMLRunnerContext* ctx, ggml_tensor* z) {
         auto decoder = std::dynamic_pointer_cast<TinyVideoDecoder>(blocks["decoder"]);
-        if (sd_version_is_wan(version) || sd_version_is_ltxav(version)) {
-            // (W, H, C, T) -> (W, H, T, C)
-            z = ggml_cont(ctx->ggml_ctx, ggml_permute(ctx->ggml_ctx, z, 0, 1, 3, 2));
-        }
-        auto result = decoder->forward(ctx, z);
-        if (sd_version_is_wan(version) || sd_version_is_ltxav(version)) {
-            // (W, H, C, T) -> (W, H, T, C)
-            result = ggml_cont(ctx->ggml_ctx, ggml_permute(ctx->ggml_ctx, result, 0, 1, 3, 2));
-        }
+        auto result  = decoder->forward(ctx, z);
         return result;
     }
 
@@ -581,14 +564,11 @@ public:
     int z_channels = 4;
 
 public:
-    TAESD(bool decode_only = true, SDVersion version = VERSION_SD1)
+    TAESD(bool decode_only = true, SDVersion version = VERSION_FLUX2)
         : decode_only(decode_only) {
         bool use_midblock_gn = false;
         taef2                = sd_version_uses_flux2_vae(version);
 
-        if (sd_version_is_dit(version)) {
-            z_channels = 16;
-        }
         if (taef2) {
             z_channels      = 32;
             use_midblock_gn = true;
@@ -627,7 +607,7 @@ struct TinyImageAutoEncoder : public VAE {
                          const String2TensorStorage& tensor_storage_map,
                          const std::string prefix,
                          bool decoder_only = true,
-                         SDVersion version = VERSION_SD1)
+                         SDVersion version = VERSION_FLUX2)
         : decode_only(decoder_only),
           taesd(decoder_only, version),
           VAE(version, backend, params_backend) {
@@ -690,7 +670,7 @@ struct TinyVideoAutoEncoder : public VAE {
                          const String2TensorStorage& tensor_storage_map,
                          const std::string prefix,
                          bool decoder_only = true,
-                         SDVersion version = VERSION_WAN2)
+                         SDVersion version = VERSION_FLUX2)
         : decode_only(decoder_only),
           VAE(version, backend, params_backend) {
         for (auto tensor_storage : tensor_storage_map) {

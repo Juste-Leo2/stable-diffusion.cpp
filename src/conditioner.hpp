@@ -135,18 +135,14 @@ struct LLMEmbedder : public Conditioner {
     LLMEmbedder(ggml_backend_t backend,
                 ggml_backend_t params_backend,
                 const String2TensorStorage& tensor_storage_map = {},
-                SDVersion version                              = VERSION_QWEN_IMAGE,
+                SDVersion version                              = VERSION_FLUX2_KLEIN,
                 const std::string prefix                       = "",
                 bool enable_vision                             = false)
         : version(version) {
         LLM::LLMArch arch = LLM::LLMArch::QWEN2_5_VL;
         if (version == VERSION_FLUX2) {
             arch = LLM::LLMArch::MISTRAL_SMALL_3_2;
-        } else if (sd_version_is_ernie_image(version)) {
-            arch = LLM::LLMArch::MINISTRAL_3_3B;
-        } else if (sd_version_is_lens(version)) {
-            arch = LLM::LLMArch::GPT_OSS_20B;
-        } else if (sd_version_is_z_image(version) || version == VERSION_OVIS_IMAGE || version == VERSION_FLUX2_KLEIN) {
+        } else if (version == VERSION_FLUX2_KLEIN) {
             arch = LLM::LLMArch::QWEN3;
         }
         {
@@ -326,140 +322,7 @@ struct LLMEmbedder : public Conditioner {
 
         int64_t t0 = ggml_time_ms();
 
-        if (sd_version_is_qwen_image(version)) {
-            if (llm->enable_vision && conditioner_params.ref_images != nullptr && !conditioner_params.ref_images->empty()) {
-                LOG_INFO("QwenImageEditPlusPipeline");
-                prompt_template_encode_start_idx = 64;
-                int image_embed_idx              = 64 + 6;
-
-                int min_pixels          = 384 * 384;
-                int max_pixels          = 560 * 560;
-                std::string placeholder = "<|image_pad|>";
-                std::string img_prompt;
-
-                for (int i = 0; i < conditioner_params.ref_images->size(); i++) {
-                    const auto& image = (*conditioner_params.ref_images)[i];
-                    double factor     = llm->params.vision.patch_size * llm->params.vision.spatial_merge_size;
-                    int height        = static_cast<int>(image.shape()[1]);
-                    int width         = static_cast<int>(image.shape()[0]);
-                    int h_bar         = static_cast<int>(std::round(height / factor) * factor);
-                    int w_bar         = static_cast<int>(std::round(width / factor) * factor);
-
-                    if (static_cast<double>(h_bar) * w_bar > max_pixels) {
-                        double beta = std::sqrt((height * width) / static_cast<double>(max_pixels));
-                        h_bar       = std::max(static_cast<int>(factor),
-                                               static_cast<int>(std::floor(height / beta / factor)) * static_cast<int>(factor));
-                        w_bar       = std::max(static_cast<int>(factor),
-                                               static_cast<int>(std::floor(width / beta / factor)) * static_cast<int>(factor));
-                    } else if (static_cast<double>(h_bar) * w_bar < min_pixels) {
-                        double beta = std::sqrt(static_cast<double>(min_pixels) / (height * width));
-                        h_bar       = static_cast<int>(std::ceil(height * beta / factor)) * static_cast<int>(factor);
-                        w_bar       = static_cast<int>(std::ceil(width * beta / factor)) * static_cast<int>(factor);
-                    }
-
-                    LOG_DEBUG("resize conditioner ref image %d from %dx%d to %dx%d", i, height, width, h_bar, w_bar);
-
-                    auto resized_image = clip_preprocess(image, w_bar, h_bar);
-
-                    auto image_embed = llm->encode_image(n_threads, resized_image);
-                    GGML_ASSERT(!image_embed.empty());
-                    image_embeds.emplace_back(image_embed_idx, image_embed);
-                    image_embed_idx += 1 + static_cast<int>(image_embed.shape()[1]) + 6;
-
-                    img_prompt += "Picture " + std::to_string(i + 1) + ": <|vision_start|>";  // [24669, 220, index, 25, 220, 151652]
-                    int64_t num_image_tokens = image_embed.shape()[1];
-                    img_prompt.reserve(num_image_tokens * placeholder.size());
-                    for (int j = 0; j < num_image_tokens; j++) {
-                        img_prompt += placeholder;
-                    }
-                    img_prompt += "<|vision_end|>";
-                }
-
-                prompt = "<|im_start|>system\nDescribe the key features of the input image (color, shape, size, texture, objects, background), then explain how the user's text instruction should alter or modify the image. Generate a new image that meets the user's requirements while maintaining consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n";
-                prompt += img_prompt;
-
-                prompt_attn_range.first = static_cast<int>(prompt.size());
-                prompt += conditioner_params.text;
-                prompt_attn_range.second = static_cast<int>(prompt.size());
-
-                prompt += "<|im_end|>\n<|im_start|>assistant\n";
-            } else {
-                prompt_template_encode_start_idx = 34;
-
-                prompt = "<|im_start|>system\nDescribe the image by detailing the color, shape, size, texture, quantity, text, spatial relationships of the objects and background:<|im_end|>\n<|im_start|>user\n";
-
-                prompt_attn_range.first = static_cast<int>(prompt.size());
-                prompt += conditioner_params.text;
-                prompt_attn_range.second = static_cast<int>(prompt.size());
-
-                prompt += "<|im_end|>\n<|im_start|>assistant\n";
-            }
-        } else if (sd_version_is_longcat(version)) {
-            spell_quotes = true;
-
-            if (llm->enable_vision && conditioner_params.ref_images != nullptr && !conditioner_params.ref_images->empty()) {
-                LOG_INFO("LongCatEditPipeline");
-                prompt_template_encode_start_idx = 67;
-                min_length                       = 512 + prompt_template_encode_start_idx;
-                int image_embed_idx              = 36 + 6;
-
-                int min_pixels          = 384 * 384;
-                int max_pixels          = 560 * 560;
-                std::string placeholder = "<|image_pad|>";
-                std::string img_prompt;
-
-                for (int i = 0; i < conditioner_params.ref_images->size(); i++) {
-                    const auto& image = (*conditioner_params.ref_images)[i];
-                    double factor     = llm->params.vision.patch_size * llm->params.vision.spatial_merge_size;
-                    int height        = static_cast<int>(image.shape()[1]);
-                    int width         = static_cast<int>(image.shape()[0]);
-                    int h_bar         = static_cast<int>(std::round(height / factor) * factor);
-                    int w_bar         = static_cast<int>(std::round(width / factor) * factor);
-
-                    if (static_cast<double>(h_bar) * w_bar > max_pixels) {
-                        double beta = std::sqrt((height * width) / static_cast<double>(max_pixels));
-                        h_bar       = std::max(static_cast<int>(factor),
-                                               static_cast<int>(std::floor(height / beta / factor)) * static_cast<int>(factor));
-                        w_bar       = std::max(static_cast<int>(factor),
-                                               static_cast<int>(std::floor(width / beta / factor)) * static_cast<int>(factor));
-                    } else if (static_cast<double>(h_bar) * w_bar < min_pixels) {
-                        double beta = std::sqrt(static_cast<double>(min_pixels) / (height * width));
-                        h_bar       = static_cast<int>(std::ceil(height * beta / factor)) * static_cast<int>(factor);
-                        w_bar       = static_cast<int>(std::ceil(width * beta / factor)) * static_cast<int>(factor);
-                    }
-
-                    LOG_DEBUG("resize conditioner ref image %d from %dx%d to %dx%d", i, height, width, h_bar, w_bar);
-
-                    auto resized_image = clip_preprocess(image, w_bar, h_bar);
-                    auto image_embed   = llm->encode_image(n_threads, resized_image);
-                    GGML_ASSERT(!image_embed.empty());
-                    image_embeds.emplace_back(image_embed_idx, image_embed);
-                    image_embed_idx += 1 + static_cast<int>(image_embed.shape()[1]) + 6;
-
-                    img_prompt += "<|vision_start|>";
-                    int64_t num_image_tokens = image_embed.shape()[1];
-                    img_prompt.reserve(num_image_tokens * placeholder.size());
-                    for (int j = 0; j < num_image_tokens; j++) {
-                        img_prompt += placeholder;
-                    }
-                    img_prompt += "<|vision_end|>";
-                }
-
-                prompt = "<|im_start|>system\nAs an image editing expert, first analyze the content and attributes of the input image(s). Then, based on the user's editing instructions, clearly and precisely determine how to modify the given image(s), ensuring that only the specified parts are altered and all other aspects remain consistent with the original(s).<|im_end|>\n<|im_start|>user\n";
-                prompt += img_prompt;
-            } else {
-                prompt_template_encode_start_idx = 36;
-                min_length                       = 512 + prompt_template_encode_start_idx;
-
-                prompt = "<|im_start|>system\nAs an image captioning expert, generate a descriptive text prompt based on an image content, suitable for input to a text-to-image model.<|im_end|>\n<|im_start|>user\n";
-            }
-
-            prompt_attn_range.first = static_cast<int>(prompt.size());
-            prompt += conditioner_params.text;
-            prompt_attn_range.second = static_cast<int>(prompt.size());
-
-            prompt += "<|im_end|>\n<|im_start|>assistant\n";
-        } else if (version == VERSION_FLUX2) {
+        if (version == VERSION_FLUX2) {
             prompt_template_encode_start_idx = 0;
             hidden_states_min_length         = 512;
             out_layers                       = {10, 20, 30};
@@ -471,58 +334,6 @@ struct LLMEmbedder : public Conditioner {
             prompt_attn_range.second = static_cast<int>(prompt.size());
 
             prompt += "[/INST]";
-        } else if (sd_version_is_ernie_image(version)) {
-            prompt_template_encode_start_idx = 0;
-            out_layers                       = {25};  // -2
-
-            prompt_attn_range.first = 0;
-            prompt += conditioner_params.text;
-            prompt_attn_range.second = static_cast<int>(prompt.size());
-        } else if (sd_version_is_lens(version)) {
-            prompt_template_encode_start_idx = 97;
-            min_length                       = 0;
-            max_length                       = 512;
-            out_layers                       = {6, 12, 18, 24};
-
-            prompt =
-                "<|start|>system<|message|>You are ChatGPT, a large language model trained by OpenAI.\n"
-                "Knowledge cutoff: 2024-06\n"
-                "Current date: 2026-05-26\n"  // fix for current date
-                "\n"
-                "Reasoning: medium\n"
-                "\n"
-                "# Valid channels: analysis, commentary, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Instructions\n"
-                "\n"
-                "Describe the image by detailing the color, shape, size, texture, quantity, text, spatial relationships of the objects and background.\n"
-                "\n"
-                "<|end|><|start|>user<|message|>";
-
-            prompt_attn_range.first = static_cast<int>(prompt.size());
-            prompt += conditioner_params.text;
-            prompt_attn_range.second = static_cast<int>(prompt.size());
-
-            prompt += "<|end|><|start|>assistant<|channel|>analysis<|message|>Need to generate one image according to the description.<|end|><|start|>assistant<|channel|>final<|message|>";
-        } else if (sd_version_is_z_image(version)) {
-            prompt_template_encode_start_idx = 0;
-            out_layers                       = {35};  // -2
-
-            if (conditioner_params.ref_images != nullptr && !conditioner_params.ref_images->empty()) {
-                LOG_INFO("ZImageOmniPipeline");
-                prompt = "<|im_start|>user\n<|vision_start|>";
-                for (int i = 0; i < conditioner_params.ref_images->size() - 1; i++) {
-                    extra_prompts.push_back("<|vision_end|><|vision_start|>");
-                }
-                extra_prompts.push_back("<|vision_end|>" + conditioner_params.text + "<|im_end|>\n<|im_start|>assistant\n<|vision_start|>");
-                extra_prompts.push_back("<|vision_end|><|im_end|>");
-            } else {
-                prompt = "<|im_start|>user\n";
-
-                prompt_attn_range.first = static_cast<int>(prompt.size());
-                prompt += conditioner_params.text;
-                prompt_attn_range.second = static_cast<int>(prompt.size());
-
-                prompt += "<|im_end|>\n<|im_start|>assistant\n";
-            }
         } else if (version == VERSION_FLUX2_KLEIN) {
             prompt_template_encode_start_idx = 0;
             min_length                       = 512;
@@ -532,17 +343,6 @@ struct LLMEmbedder : public Conditioner {
 
             prompt_attn_range.first = static_cast<int>(prompt.size());
             prompt += conditioner_params.text;
-            prompt_attn_range.second = static_cast<int>(prompt.size());
-
-            prompt += "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n";
-        } else if (version == VERSION_OVIS_IMAGE) {
-            prompt_template_encode_start_idx = 28;
-            min_length                       = prompt_template_encode_start_idx + 256;
-
-            prompt = "<|im_start|>user\nDescribe the image by detailing the color, quantity, text, shape, size, texture, spatial relationships of the objects and background:";
-
-            prompt_attn_range.first = static_cast<int>(prompt.size());
-            prompt += " " + conditioner_params.text;
             prompt_attn_range.second = static_cast<int>(prompt.size());
 
             prompt += "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n";

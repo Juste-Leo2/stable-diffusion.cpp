@@ -733,7 +733,7 @@ namespace Flux {
     };
 
     struct FluxParams {
-        SDVersion version         = VERSION_FLUX;
+        SDVersion version         = VERSION_FLUX2;
         bool is_chroma            = false;
         int patch_size            = 2;
         int64_t in_channels       = 64;
@@ -766,20 +766,7 @@ namespace Flux {
         Flux() {}
         Flux(FluxParams params)
             : params(params) {
-            if (params.version == VERSION_CHROMA_RADIANCE) {
-                std::pair<int, int> kernel_size = {params.patch_size, params.patch_size};
-                if (params.chroma_radiance_params.fake_patch_size_x2) {
-                    kernel_size = {params.patch_size / 2, params.patch_size / 2};
-                }
-                std::pair<int, int> stride = kernel_size;
-
-                blocks["img_in_patch"] = std::make_shared<Conv2d>(params.in_channels,
-                                                                  params.hidden_size,
-                                                                  kernel_size,
-                                                                  stride);
-            } else {
-                blocks["img_in"] = std::make_shared<Linear>(params.in_channels, params.hidden_size, !params.disable_bias);
-            }
+            blocks["img_in"] = std::make_shared<Linear>(params.in_channels, params.hidden_size, !params.disable_bias);
             if (params.is_chroma) {
                 blocks["distilled_guidance_layer"] = std::make_shared<ChromaApproximator>(params.in_dim, params.hidden_size);
             } else {
@@ -822,23 +809,7 @@ namespace Flux {
                                                                                                    params.use_mlp_silu_act);
             }
 
-            if (params.version == VERSION_CHROMA_RADIANCE) {
-                blocks["nerf_image_embedder"] = std::make_shared<NerfEmbedder>(params.in_channels,
-                                                                               params.chroma_radiance_params.nerf_hidden_size,
-                                                                               params.chroma_radiance_params.nerf_max_freqs);
-
-                for (int i = 0; i < params.chroma_radiance_params.nerf_depth; i++) {
-                    blocks["nerf_blocks." + std::to_string(i)] = std::make_shared<NerfGLUBlock>(params.hidden_size,
-                                                                                                params.chroma_radiance_params.nerf_hidden_size,
-                                                                                                params.chroma_radiance_params.nerf_mlp_ratio);
-                }
-
-                blocks["nerf_final_layer_conv"] = std::make_shared<NerfFinalLayerConv>(params.chroma_radiance_params.nerf_hidden_size,
-                                                                                       params.in_channels);
-
-            } else {
-                blocks["final_layer"] = std::make_shared<LastLayer>(params.hidden_size, 1, params.out_channels, params.is_chroma, !params.disable_bias);
-            }
+            blocks["final_layer"] = std::make_shared<LastLayer>(params.hidden_size, 1, params.out_channels, params.is_chroma, !params.disable_bias);
 
             if (params.share_modulation) {
                 blocks["double_stream_modulation_img"] = std::make_shared<Modulation>(params.hidden_size, true, !params.disable_bias);
@@ -1080,32 +1051,7 @@ namespace Flux {
             auto img           = DiT::pad_and_patchify(ctx, x, patch_size, patch_size);
             int64_t img_tokens = img->ne[1];
 
-            if (params.version == VERSION_FLUX_FILL) {
-                GGML_ASSERT(c_concat != nullptr);
-                ggml_tensor* masked = ggml_view_4d(ctx->ggml_ctx, c_concat, c_concat->ne[0], c_concat->ne[1], C, 1, c_concat->nb[1], c_concat->nb[2], c_concat->nb[3], 0);
-                ggml_tensor* mask   = ggml_view_4d(ctx->ggml_ctx, c_concat, c_concat->ne[0], c_concat->ne[1], 8 * 8, 1, c_concat->nb[1], c_concat->nb[2], c_concat->nb[3], c_concat->nb[2] * C);
 
-                masked = DiT::pad_and_patchify(ctx, masked, patch_size, patch_size);
-                mask   = DiT::pad_and_patchify(ctx, mask, patch_size, patch_size);
-
-                img = ggml_concat(ctx->ggml_ctx, img, ggml_concat(ctx->ggml_ctx, masked, mask, 0), 0);
-            } else if (params.version == VERSION_FLEX_2) {
-                GGML_ASSERT(c_concat != nullptr);
-                ggml_tensor* masked  = ggml_view_4d(ctx->ggml_ctx, c_concat, c_concat->ne[0], c_concat->ne[1], C, 1, c_concat->nb[1], c_concat->nb[2], c_concat->nb[3], 0);
-                ggml_tensor* mask    = ggml_view_4d(ctx->ggml_ctx, c_concat, c_concat->ne[0], c_concat->ne[1], 1, 1, c_concat->nb[1], c_concat->nb[2], c_concat->nb[3], c_concat->nb[2] * C);
-                ggml_tensor* control = ggml_view_4d(ctx->ggml_ctx, c_concat, c_concat->ne[0], c_concat->ne[1], C, 1, c_concat->nb[1], c_concat->nb[2], c_concat->nb[3], c_concat->nb[2] * (C + 1));
-
-                masked  = DiT::pad_and_patchify(ctx, masked, patch_size, patch_size);
-                mask    = DiT::pad_and_patchify(ctx, mask, patch_size, patch_size);
-                control = DiT::pad_and_patchify(ctx, control, patch_size, patch_size);
-
-                img = ggml_concat(ctx->ggml_ctx, img, ggml_concat(ctx->ggml_ctx, ggml_concat(ctx->ggml_ctx, masked, mask, 0), control, 0), 0);
-            } else if (params.version == VERSION_FLUX_CONTROLS) {
-                GGML_ASSERT(c_concat != nullptr);
-
-                auto control = DiT::pad_and_patchify(ctx, c_concat, patch_size, patch_size);
-                img          = ggml_concat(ctx->ggml_ctx, img, control, 0);
-            }
 
             if (ref_latents.size() > 0) {
                 for (ggml_tensor* ref : ref_latents) {
@@ -1147,33 +1093,18 @@ namespace Flux {
             // pe: (L, d_head/2, 2, 2)
             // return: (N, C, H, W)
 
-            if (params.version == VERSION_CHROMA_RADIANCE) {
-                return forward_chroma_radiance(ctx,
-                                               x,
-                                               timestep,
-                                               context,
-                                               c_concat,
-                                               y,
-                                               guidance,
-                                               pe,
-                                               mod_index_arange,
-                                               dct,
-                                               ref_latents,
-                                               skip_layers);
-            } else {
-                return forward_flux_chroma(ctx,
-                                           x,
-                                           timestep,
-                                           context,
-                                           c_concat,
-                                           y,
-                                           guidance,
-                                           pe,
-                                           mod_index_arange,
-                                           dct,
-                                           ref_latents,
-                                           skip_layers);
-            }
+            return forward_flux_chroma(ctx,
+                                       x,
+                                       timestep,
+                                       context,
+                                       c_concat,
+                                       y,
+                                       guidance,
+                                       pe,
+                                       mod_index_arange,
+                                       dct,
+                                       ref_latents,
+                                       skip_layers);
         }
     };
 
@@ -1192,27 +1123,14 @@ namespace Flux {
                    ggml_backend_t params_backend,
                    const String2TensorStorage& tensor_storage_map = {},
                    const std::string prefix                       = "",
-                   SDVersion version                              = VERSION_FLUX,
+                   SDVersion version                              = VERSION_FLUX2,
                    bool use_mask                                  = false)
             : DiffusionModelRunner(backend, params_backend, prefix), version(version), use_mask(use_mask) {
             flux_params.version             = version;
             flux_params.guidance_embed      = false;
             flux_params.depth               = 0;
             flux_params.depth_single_blocks = 0;
-            if (version == VERSION_FLUX_FILL) {
-                flux_params.in_channels = 384;
-            } else if (version == VERSION_FLUX_CONTROLS) {
-                flux_params.in_channels = 128;
-            } else if (version == VERSION_FLEX_2) {
-                flux_params.in_channels = 196;
-            } else if (version == VERSION_CHROMA_RADIANCE) {
-                flux_params.in_channels = 3;
-                flux_params.patch_size  = 16;
-            } else if (version == VERSION_OVIS_IMAGE) {
-                flux_params.semantic_txt_norm = true;
-                flux_params.use_yak_mlp       = true;
-                flux_params.vec_in_dim        = 0;
-            } else if (sd_version_is_flux2(version)) {
+            if (sd_version_is_flux2(version)) {
                 flux_params.in_channels      = 128;
                 flux_params.patch_size       = 1;
                 flux_params.out_channels     = 128;
@@ -1225,9 +1143,6 @@ namespace Flux {
                 flux_params.share_modulation = true;
                 flux_params.ref_index_scale  = 10.f;
                 flux_params.use_mlp_silu_act = true;
-            } else if (sd_version_is_longcat(version)) {
-                flux_params.context_in_dim = 3584;
-                flux_params.vec_in_dim     = 0;
             }
             int64_t head_dim                   = 0;
             int64_t actual_radiance_patch_size = -1;
@@ -1412,8 +1327,6 @@ namespace Flux {
             if (sd_version_is_flux2(version)) {
                 txt_arange_dims    = {3};
                 increase_ref_index = true;
-            } else if (version == VERSION_OVIS_IMAGE) {
-                txt_arange_dims = {1, 2};
             }
             pe_vec      = Rope::gen_flux_pe(static_cast<int>(x->ne[1]),
                                             static_cast<int>(x->ne[0]),
@@ -1428,7 +1341,7 @@ namespace Flux {
                                             circular_y_enabled,
                                             circular_x_enabled,
                                             flux_params.axes_dim,
-                                            sd_version_is_longcat(version));
+                                            false);
             int pos_len = static_cast<int>(pe_vec.size() / flux_params.axes_dim_sum / 2);
             // LOG_DEBUG("pos_len %d", pos_len);
             auto pe = ggml_new_tensor_4d(compute_ctx, GGML_TYPE_F32, 2, 2, flux_params.axes_dim_sum / 2, pos_len);
@@ -1436,17 +1349,6 @@ namespace Flux {
             // print_ggml_tensor(pe);
             // pe->data = nullptr;
             set_backend_tensor_data(pe, pe_vec.data());
-
-            if (version == VERSION_CHROMA_RADIANCE) {
-                int patch_size     = flux_params.patch_size;
-                int nerf_max_freqs = flux_params.chroma_radiance_params.nerf_max_freqs;
-                dct_vec            = fetch_dct_pos(patch_size, nerf_max_freqs);
-                dct                = ggml_new_tensor_2d(compute_ctx, GGML_TYPE_F32, nerf_max_freqs * nerf_max_freqs, patch_size * patch_size);
-                // dct->data = dct_vec.data();
-                // print_ggml_tensor(dct);
-                // dct->data = nullptr;
-                set_backend_tensor_data(dct, dct_vec.data());
-            }
 
             auto runner_ctx = get_context();
 

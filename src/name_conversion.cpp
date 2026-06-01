@@ -683,18 +683,8 @@ std::string convert_other_dit_to_original_anima(std::string name) {
 }
 
 std::string convert_diffusion_model_name(std::string name, std::string prefix, SDVersion version) {
-    if (sd_version_is_sd1(version) || sd_version_is_sd2(version)) {
-        name = convert_diffusers_unet_to_original_sd1(name);
-    } else if (sd_version_is_sdxl(version)) {
-        name = convert_diffusers_unet_to_original_sdxl(name);
-    } else if (sd_version_is_sd3(version)) {
-        name = convert_diffusers_dit_to_original_sd3(name);
-    } else if (sd_version_is_flux(version) || sd_version_is_flux2(version) || sd_version_is_longcat(version)) {
+    if (sd_version_is_flux2(version)) {
         name = convert_diffusers_dit_to_original_flux(name);
-    } else if (sd_version_is_z_image(version)) {
-        name = convert_diffusers_dit_to_original_lumina2(name);
-    } else if (sd_version_is_anima(version)) {
-        name = convert_other_dit_to_original_anima(name);
     }
     return name;
 }
@@ -1085,7 +1075,7 @@ std::string convert_tensor_name(std::string name, SDVersion version) {
 
         // LOG_DEBUG("name %s %d", name.c_str(), version);
 
-        if (sd_version_is_unet(version) || is_underline || is_lycoris_underline) {
+        if (is_underline || is_lycoris_underline) {
             name = convert_sep_to_dot(name);
         }
     }
@@ -1108,7 +1098,7 @@ std::string convert_tensor_name(std::string name, SDVersion version) {
         {"te3.", "text_encoders.t5xxl.transformer."},
     };
 
-    if (sd_version_is_flux(version)) {
+    if (sd_version_is_flux2(version)) {
         prefix_map["te1."] = "text_encoders.clip_l.transformer.";
     }
 
@@ -1141,11 +1131,7 @@ std::string convert_tensor_name(std::string name, SDVersion version) {
         for (const auto& prefix : first_stage_model_prefix_vec) {
             if (starts_with(name, prefix)) {
                 name = convert_first_stage_model_name(name.substr(prefix.size()), prefix);
-                if (version == VERSION_SDXS_512_DS || version == VERSION_SDXS_09) {
-                    name = "tae." + name;
-                } else {
-                    name = prefix + name;
-                }
+                name = prefix + name;
                 break;
             }
         }

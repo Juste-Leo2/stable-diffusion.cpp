@@ -22,40 +22,8 @@
 
 const char* model_version_to_str[] = {
     "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
     "Flux.2",
     "Flux.2 klein",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
 };
 
 const char* sampling_methods_str[] = {
@@ -249,42 +217,10 @@ public:
             }
         }
 
-        bool is_unet = sd_version_is_unet(model_loader.get_sd_version());
-
-        if (strlen(SAFE_STR(sd_ctx_params->clip_l_path)) > 0) {
-            LOG_INFO("loading clip_l from '%s'", sd_ctx_params->clip_l_path);
-            std::string prefix = is_unet ? "cond_stage_model.transformer." : "text_encoders.clip_l.transformer.";
-            if (!model_loader.init_from_file(sd_ctx_params->clip_l_path, prefix)) {
-                LOG_WARN("loading clip_l from '%s' failed", sd_ctx_params->clip_l_path);
-            }
-        }
-
-        if (strlen(SAFE_STR(sd_ctx_params->clip_g_path)) > 0) {
-            LOG_INFO("loading clip_g from '%s'", sd_ctx_params->clip_g_path);
-            std::string prefix = is_unet ? "cond_stage_model.1.transformer." : "text_encoders.clip_g.transformer.";
-            if (!model_loader.init_from_file(sd_ctx_params->clip_g_path, prefix)) {
-                LOG_WARN("loading clip_g from '%s' failed", sd_ctx_params->clip_g_path);
-            }
-        }
-
-        if (strlen(SAFE_STR(sd_ctx_params->t5xxl_path)) > 0) {
-            LOG_INFO("loading t5xxl from '%s'", sd_ctx_params->t5xxl_path);
-            if (!model_loader.init_from_file(sd_ctx_params->t5xxl_path, "text_encoders.t5xxl.transformer.")) {
-                LOG_WARN("loading t5xxl from '%s' failed", sd_ctx_params->t5xxl_path);
-            }
-        }
-
         if (strlen(SAFE_STR(sd_ctx_params->llm_path)) > 0) {
             LOG_INFO("loading llm from '%s'", sd_ctx_params->llm_path);
             if (!model_loader.init_from_file(sd_ctx_params->llm_path, "text_encoders.llm.")) {
                 LOG_WARN("loading llm from '%s' failed", sd_ctx_params->llm_path);
-            }
-        }
-
-        if (strlen(SAFE_STR(sd_ctx_params->llm_vision_path)) > 0) {
-            LOG_INFO("loading llm vision from '%s'", sd_ctx_params->llm_vision_path);
-            if (!model_loader.init_from_file(sd_ctx_params->llm_vision_path, "text_encoders.llm.visual.")) {
-                LOG_WARN("loading llm vision from '%s' failed", sd_ctx_params->llm_vision_path);
             }
         }
 
@@ -421,15 +357,7 @@ public:
             }
         };
 
-        if (sd_version_is_control(version)) {
-            // Might need vae encode for control cond
-            vae_decode_only = false;
-        }
         bool tae_preview_only = sd_ctx_params->tae_preview_only;
-        if (version == VERSION_SDXS_512_DS || version == VERSION_SDXS_09) {
-            tae_preview_only = false;
-            use_tae          = true;
-        }
 
         if (sd_ctx_params->circular_x || sd_ctx_params->circular_y) {
             LOG_INFO("Using circular padding for convolutions");
@@ -461,10 +389,6 @@ public:
 
             diffusion_model->set_max_graph_vram_bytes(max_graph_vram_bytes);
             get_param_tensors(diffusion_model, module_can_mmap(SDBackendModule::DIFFUSION));
-
-            if (sd_version_is_unet_edit(version)) {
-                vae_decode_only = false;
-            }
 
             if (!ensure_backend_pair(SDBackendModule::VAE)) {
                 return false;
@@ -1223,9 +1147,7 @@ public:
         if (latents.empty()) {
             return {};
         }
-        if (version != VERSION_SD1_PIX2PIX) {
-            latents = first_stage_model->vae_to_diffusion_latents(latents);
-        }
+        latents = first_stage_model->vae_to_diffusion_latents(latents);
         return latents;
     }
 
@@ -1936,9 +1858,7 @@ struct GenerationRequest {
             guidance->img_cfg = guidance->txt_cfg;
         }
 
-        if (!sd_version_is_inpaint_or_unet_edit(sd_ctx->sd->version)) {
-            guidance->img_cfg = guidance->txt_cfg;
-        }
+        guidance->img_cfg = guidance->txt_cfg;
 
         if (guidance->txt_cfg != 1.f) {
             *use_uncond = true;
@@ -2188,12 +2108,6 @@ static std::optional<ImageGenerationLatents> prepare_image_generation_latents(sd
         control_image_tensor = sd_image_to_tensor(sd_img_gen_params->control_image, request->width, request->height);
     }
 
-    if (init_image_tensor.empty() || mask_image_tensor.empty()) {
-        if (sd_version_is_inpaint(sd_ctx->sd->version)) {
-            LOG_WARN("inpainting model requires both an init image and a mask image.");
-        }
-    }
-
     if (mask_image_tensor.empty()) {
         mask_image_tensor = sd::full<float>({request->width, request->height, 1, 1}, 1.f);
     }
@@ -2230,21 +2144,12 @@ static std::optional<ImageGenerationLatents> prepare_image_generation_latents(sd
         ref_images.push_back(sd_image_to_tensor(sd_img_gen_params->ref_images[i]));
     }
 
-    if (ref_images.empty() && sd_version_is_unet_edit(sd_ctx->sd->version)) {
-        LOG_WARN("This model needs at least one reference image; using an empty reference");
-        ref_images.push_back(sd::zeros<float>({request->width, request->height, 3, 1}));
-        request->guidance.img_cfg = request->guidance.txt_cfg;
-    }
-
     if (!ref_images.empty()) {
         LOG_INFO("EDIT mode");
     }
 
     std::vector<sd::Tensor<float>> ref_latents;
     for (size_t i = 0; i < ref_images.size(); i++) {
-        if (sd_ctx->sd->version == VERSION_HIDREAM_O1) {
-            continue;
-        }
         sd::Tensor<float> ref_latent;
         if (request->auto_resize_ref_image) {
             LOG_DEBUG("auto resize ref images");
@@ -2257,7 +2162,7 @@ static std::optional<ImageGenerationLatents> prepare_image_generation_latents(sd
             vae_width  = round(vae_width / factor) * factor;
 
             auto resized_ref_img = sd::ops::interpolate(ref_images[i],
-                                                        {static_cast<int>(vae_width), static_cast<int>(vae_height), 3, 1});
+                                                         {static_cast<int>(vae_width), static_cast<int>(vae_height), 3, 1});
 
             LOG_DEBUG("resize vae ref image %d from %" PRId64 "x%" PRId64 " to %" PRId64 "x%" PRId64,
                       static_cast<int>(i),
@@ -2280,62 +2185,6 @@ static std::optional<ImageGenerationLatents> prepare_image_generation_latents(sd
 
     sd::Tensor<float> concat_latent;
     sd::Tensor<float> uncond_concat_latent;
-    if (sd_version_is_inpaint(sd_ctx->sd->version)) {
-        sd::Tensor<float> masked_init_latent;
-
-        if (sd_ctx->sd->version != VERSION_FLEX_2) {
-            if (!init_image_tensor.empty()) {
-                auto masked_image  = ((1.0f - mask_image_tensor) * (init_image_tensor - 0.5f)) + 0.5f;
-                masked_init_latent = sd_ctx->sd->encode_first_stage(masked_image);
-                if (masked_init_latent.empty()) {
-                    LOG_ERROR("failed to encode masked init image");
-                    return std::nullopt;
-                }
-            } else {
-                masked_init_latent = sd::Tensor<float>::zeros_like(init_latent);
-            }
-        } else {
-            masked_init_latent = ((1.0f - latent_mask) * init_latent);
-        }
-
-        auto uncond_masked_init_latent = sd::Tensor<float>::zeros_like(masked_init_latent);
-
-        if (sd_ctx->sd->version == VERSION_FLUX_FILL) {
-            auto mask = mask_image_tensor.reshape({request->vae_scale_factor,
-                                                   request->width / request->vae_scale_factor,
-                                                   request->vae_scale_factor,
-                                                   request->height / request->vae_scale_factor});
-            mask      = mask.permute({1, 3, 0, 2}).reshape({request->width / request->vae_scale_factor, request->height / request->vae_scale_factor, request->vae_scale_factor * request->vae_scale_factor, 1});
-
-            concat_latent        = sd::ops::concat(masked_init_latent, mask, 2);
-            uncond_concat_latent = sd::ops::concat(uncond_masked_init_latent, mask, 2);
-        } else if (sd_ctx->sd->version == VERSION_FLEX_2) {
-            concat_latent = sd::ops::concat(masked_init_latent, latent_mask, 2);
-            if (!control_latent.empty()) {
-                concat_latent = sd::ops::concat(concat_latent, control_latent, 2);
-            } else {
-                concat_latent = sd::ops::concat(concat_latent, sd::Tensor<float>::zeros_like(masked_init_latent), 2);
-            }
-
-            uncond_concat_latent = sd::ops::concat(uncond_masked_init_latent, latent_mask, 2);
-            uncond_concat_latent = sd::ops::concat(uncond_concat_latent, sd::Tensor<float>::zeros_like(masked_init_latent), 2);
-        } else {  // SD1.x SD2.x SDXL inpaint
-            concat_latent        = sd::ops::concat(latent_mask, masked_init_latent, 2);
-            uncond_concat_latent = sd::ops::concat(latent_mask, uncond_masked_init_latent, 2);
-        }
-    }
-    if (sd_version_is_unet_edit(sd_ctx->sd->version)) {
-        concat_latent        = sd::ops::interpolate<float>(ref_latents[0], init_latent.shape());
-        uncond_concat_latent = sd::Tensor<float>::zeros_like(concat_latent);
-    }
-    if (sd_ctx->sd->version == VERSION_FLUX_CONTROLS) {
-        if (!control_latent.empty()) {
-            concat_latent = control_latent;
-        } else {
-            concat_latent = sd::Tensor<float>::zeros_like(init_latent);
-        }
-        uncond_concat_latent = sd::Tensor<float>::zeros_like(concat_latent);
-    }
 
     if (sd_img_gen_params->init_image.data != nullptr || sd_img_gen_params->ref_images_count > 0) {
         int64_t t1 = ggml_time_ms();
@@ -2350,12 +2199,6 @@ static std::optional<ImageGenerationLatents> prepare_image_generation_latents(sd
     latents.ref_images           = std::move(ref_images);
     latents.ref_latents          = std::move(ref_latents);
 
-    if (sd_version_is_inpaint(sd_ctx->sd->version)) {
-        latent_mask = sd::ops::max_pool_2d(latent_mask,
-                                           {3, 3},
-                                           {1, 1},
-                                           {1, 1});
-    }
     latents.denoise_mask = std::move(latent_mask);
 
     return latents;

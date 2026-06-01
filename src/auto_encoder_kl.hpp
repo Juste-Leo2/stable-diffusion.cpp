@@ -533,21 +533,16 @@ protected:
     }
 
 public:
-    AutoEncoderKLModel(SDVersion version                              = VERSION_SD1,
+    AutoEncoderKLModel(SDVersion version                              = VERSION_FLUX2,
                        bool decode_only                               = true,
                        bool use_linear_projection                     = false,
                        bool use_video_decoder                         = false,
                        const String2TensorStorage& tensor_storage_map = {},
                        const std::string& prefix                      = "")
         : version(version), decode_only(decode_only), use_video_decoder(use_video_decoder) {
-        if (sd_version_is_dit(version)) {
-            if (sd_version_uses_flux2_vae(version)) {
-                dd_config.z_channels = 32;
-                embed_dim            = 32;
-            } else {
-                use_quant            = false;
-                dd_config.z_channels = 16;
-            }
+        if (sd_version_uses_flux2_vae(version)) {
+            dd_config.z_channels = 32;
+            embed_dim            = 32;
         }
         if (use_video_decoder) {
             use_quant = false;
@@ -668,22 +663,10 @@ struct AutoEncoderKL : public VAE {
                   const String2TensorStorage& tensor_storage_map,
                   const std::string prefix,
                   bool decode_only       = false,
-                  bool use_video_decoder = false,
-                  SDVersion version      = VERSION_SD1)
+                   bool use_video_decoder = false,
+                   SDVersion version      = VERSION_FLUX2)
         : decode_only(decode_only), VAE(version, backend, params_backend) {
-        if (sd_version_is_sd1(version) || sd_version_is_sd2(version)) {
-            scale_factor = 0.18215f;
-            shift_factor = 0.f;
-        } else if (sd_version_is_sdxl(version)) {
-            scale_factor = 0.13025f;
-            shift_factor = 0.f;
-        } else if (sd_version_is_sd3(version)) {
-            scale_factor = 1.5305f;
-            shift_factor = 0.0609f;
-        } else if (sd_version_is_flux(version) || sd_version_is_z_image(version) || sd_version_is_longcat(version)) {
-            scale_factor = 0.3611f;
-            shift_factor = 0.1159f;
-        } else if (sd_version_uses_flux2_vae(version)) {
+        if (sd_version_uses_flux2_vae(version)) {
             scale_factor = 1.0f;
             shift_factor = 0.f;
         }
@@ -757,13 +740,7 @@ struct AutoEncoderKL : public VAE {
     }
 
     sd::Tensor<float> vae_output_to_latents(const sd::Tensor<float>& vae_output, std::shared_ptr<RNG> rng) override {
-        if (sd_version_uses_flux2_vae(version)) {
-            return vae_output;
-        } else if (version == VERSION_SD1_PIX2PIX) {
-            return sd::ops::chunk(vae_output, 2, 2)[0];
-        } else {
-            return gaussian_latent_sample(vae_output, rng);
-        }
+        return vae_output;
     }
 
     std::pair<sd::Tensor<float>, sd::Tensor<float>> get_latents_mean_std(const sd::Tensor<float>& latents, int channel_dim) {
