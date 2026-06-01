@@ -32,12 +32,6 @@ if (NOT GGML_SHARED_LIB)
         list(APPEND GGML_CPU_INTERFACE_LINK_LIBRARIES memkind)
     endif()
 
-    if (GGML_BLAS)
-        find_dependency(BLAS)
-        list(APPEND GGML_BLAS_INTERFACE_LINK_LIBRARIES ${BLAS_LIBRARIES})
-        list(APPEND GGML_BLAS_INTERFACE_LINK_OPTIONS   ${BLAS_LINKER_FLAGS})
-    endif()
-
     if (GGML_CUDA)
         set(GGML_CUDA_INTERFACE_LINK_LIBRARIES "")
         find_dependency(CUDAToolkit)
@@ -64,11 +58,6 @@ if (NOT GGML_SHARED_LIB)
         endif()
         set(GGML_METAL_INTERFACE_LINK_LIBRARIES
             ${FOUNDATION_LIBRARY} ${METAL_FRAMEWORK} ${METALKIT_FRAMEWORK})
-    endif()
-
-    if (GGML_OPENCL)
-        find_dependency(OpenCL)
-        set(GGML_OPENCL_INTERFACE_LINK_LIBRARIES $<LINK_ONLY:OpenCL::OpenCL>)
     endif()
 
     if (GGML_VULKAN)

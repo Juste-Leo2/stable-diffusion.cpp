@@ -29,7 +29,7 @@ body:
     attributes:
         label: GGML backends
         description: Which GGML backends do you know to be affected?
-        options: [CPU, CUDA, HIP, Metal, Musa, SYCL, Vulkan, OpenCL]
+        options: [CPU, CUDA, HIP, Metal, SYCL, Vulkan]
         multiple: true
     validations:
       required: true

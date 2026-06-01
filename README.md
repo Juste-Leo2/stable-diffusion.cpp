@@ -66,7 +66,6 @@ API and command-line option may change frequently.***
   - CUDA
   - Vulkan
   - Metal
-  - OpenCL
   - SYCL
 - Supported weight formats
   - Pytorch checkpoint (`.ckpt` or `.pth` or `.pt`)
