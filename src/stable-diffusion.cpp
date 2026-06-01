@@ -1021,6 +1021,32 @@ public:
             return false;
         }
 
+        // swap the two halves of final_layer.adaLN_modulation.1.weight
+        // (diffusers stores shift/scale in opposite order from what the C model expects)
+        for (auto& [name, tensor] : tensors) {
+            if (name.find("final_layer.adaLN_modulation.1.weight") != std::string::npos) {
+                size_t total = ggml_nelements(tensor);
+                size_t half  = total / 2;
+                size_t sz    = half * ggml_type_size(tensor->type);
+
+                std::vector<uint8_t> buf(sz);
+                if (tensor->buffer && !ggml_backend_buffer_is_host(tensor->buffer)) {
+                    ggml_backend_tensor_get(tensor, buf.data(), 0, sz);
+                    std::vector<uint8_t> buf2(sz);
+                    ggml_backend_tensor_get(tensor, buf2.data(), sz, sz);
+                    ggml_backend_tensor_set(tensor, buf2.data(), 0, sz);
+                    ggml_backend_tensor_set(tensor, buf.data(), sz, sz);
+                } else if (tensor->data) {
+                    memcpy(buf.data(), (uint8_t*)tensor->data, sz);
+                    memcpy((uint8_t*)tensor->data, (uint8_t*)tensor->data + sz, sz);
+                    memcpy((uint8_t*)tensor->data + sz, buf.data(), sz);
+                } else {
+                    LOG_ERROR("cannot swap %s: no buffer and no data", name.c_str());
+                }
+                break;
+            }
+        }
+
         LOG_DEBUG("finished loaded file");
 
         {
