@@ -582,6 +582,12 @@ void ggml_vec_dot_q1_0_q8_0(int n, float * GGML_RESTRICT s, size_t bs, const voi
         __m256 acc11 = _mm256_setzero_ps();
 
         for (int ib = 0; ib < nb; ++ib) {
+            if (ib + 2 < nb) {
+                _mm_prefetch(&x[ib + 2], _MM_HINT_T0);
+                _mm_prefetch(&x1[ib + 2], _MM_HINT_T0);
+                _mm_prefetch(&y[(ib + 2) * 4], _MM_HINT_T0);
+                _mm_prefetch(&y1[(ib + 2) * 4], _MM_HINT_T0);
+            }
             const float d0_0 = GGML_CPU_FP16_TO_FP32(x[ib].d);
             const float d0_1 = GGML_CPU_FP16_TO_FP32(x1[ib].d);
             const uint32_t * GGML_RESTRICT qs32   = (const uint32_t *) x[ib].qs;
