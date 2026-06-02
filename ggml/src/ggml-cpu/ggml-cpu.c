@@ -226,7 +226,7 @@ static const struct ggml_type_traits_cpu type_traits_cpu[GGML_TYPE_COUNT] = {
         .vec_dot                  = ggml_vec_dot_q1_0_q8_0,
         .vec_dot_type             = GGML_TYPE_Q8_0,
 #if defined(__AVX2__)
-        .nrows                    = 2,
+        .nrows                    = 4,
 #else
         .nrows                    = 1,
 #endif
@@ -1200,8 +1200,8 @@ static void ggml_compute_forward_mul_mat_one_chunk(
     const size_t src1_col_stride = src1_cont || src1->type != vec_dot_type ? row_size : nb11;
 
     // attempt to reduce false-sharing (does not seem to make a difference)
-    // 16 * 2, accounting for mmla kernels
-    float tmp[32];
+    // 16 * 4, accounting for mmla kernels
+    float tmp[64];
 
     for (int64_t iir1 = ir1_start; iir1 < ir1_end; iir1 += blck_1) {
         for (int64_t iir0 = ir0_start; iir0 < ir0_end; iir0 += blck_0) {
@@ -1234,11 +1234,13 @@ static void ggml_compute_forward_mul_mat_one_chunk(
                 //    vec_dot(ne00, &dst_col[ir0], src0_row + ir0*nb01, src1_col);
                 //}
 
+                size_t by_val = (num_rows_per_vec_dot > 1 && (size_t)(ir1_end - ir1) >= (size_t)num_rows_per_vec_dot) ? src1_col_stride : 0;
                 for (int64_t ir0 = iir0; ir0 < iir0 + blck_0 && ir0 < ir0_end; ir0 += num_rows_per_vec_dot) {
-                    vec_dot(ne00, &tmp[ir0 - iir0], (num_rows_per_vec_dot > 1 ? 16 : 0), src0_row + ir0 * nb01, (num_rows_per_vec_dot > 1 ? nb01 : 0), src1_col, (num_rows_per_vec_dot > 1 ? src1_col_stride : 0), num_rows_per_vec_dot);
+                    vec_dot(ne00, &tmp[ir0 - iir0], (num_rows_per_vec_dot > 1 ? 16 : 0), src0_row + ir0 * nb01, (num_rows_per_vec_dot > 1 ? nb01 : 0), src1_col, by_val, num_rows_per_vec_dot);
                 }
 
-                for (int cn = 0; cn < num_rows_per_vec_dot; ++cn) {
+                int64_t num_cols = MIN(num_rows_per_vec_dot, ir1_end - ir1);
+                for (int cn = 0; cn < num_cols; ++cn) {
                     memcpy(&dst_col[iir0 + cn * nb1 / nb0], tmp + (cn * 16), (MIN(iir0 + blck_0, ir0_end) - iir0) * sizeof(float));
                 }
             }
@@ -1428,12 +1430,12 @@ UseGgmlGemm2:;
         const int64_t ir1_start = dr1 * ith1;
         const int64_t ir1_end = MIN(ir1_start + dr1, nr1);
 
-        // dot kernels can handle 1 row and col at a time, but mmla kernels can process 2 rows and cols
+        // dot kernels can handle 1 row and col at a time, but mmla kernels can process multiple rows and cols
         int64_t num_rows_per_vec_dot = vec_dot_num_rows;
 
         // these checks are needed to avoid crossing dim1 boundaries
         // can be optimized, but the logic would become more complicated, so keeping it like this for simplicity
-        if ((nr0 % 2 != 0) || (ne11 % 2 != 0) || ((ir0_end - ir0_start) % 2 != 0) || ((ir1_end - ir1_start) % 2 != 0)) {
+        if ((nr0 % vec_dot_num_rows != 0) || ((ir0_end - ir0_start) % vec_dot_num_rows != 0)) {
             num_rows_per_vec_dot = 1;
         }
         ggml_compute_forward_mul_mat_one_chunk(params, dst, src0->type, num_rows_per_vec_dot, ir0_start, ir0_end, ir1_start, ir1_end);

@@ -211,6 +211,62 @@ void ggml_vec_dot_q1_0_q8_0_generic(int n, float * GGML_RESTRICT s, size_t bs, c
         return;
     }
 
+    if (nrc == 4) {
+        const block_q1_0 * GGML_RESTRICT x0 = vx;
+        const block_q1_0 * GGML_RESTRICT x1 = (const block_q1_0 *)((const char *)vx + bx);
+        const block_q1_0 * GGML_RESTRICT x2 = (const block_q1_0 *)((const char *)vx + 2*bx);
+        const block_q1_0 * GGML_RESTRICT x3 = (const block_q1_0 *)((const char *)vx + 3*bx);
+        const block_q8_0 * GGML_RESTRICT y0 = vy;
+        const block_q8_0 * GGML_RESTRICT y1 = (const block_q8_0 *)((const char *)vy + by);
+        const block_q8_0 * GGML_RESTRICT y2 = (const block_q8_0 *)((const char *)vy + 2*by);
+        const block_q8_0 * GGML_RESTRICT y3 = (const block_q8_0 *)((const char *)vy + 3*by);
+        const block_q1_0 * rows[4] = { x0, x1, x2, x3 };
+        const block_q8_0 * cols[4] = { y0, y1, y2, y3 };
+
+        float sum[16] = {0};
+
+        for (int i = 0; i < nb; i++) {
+            for (int r = 0; r < 4; ++r) {
+                const float d0 = GGML_CPU_FP16_TO_FP32(rows[r][i].d);
+                const uint8_t * GGML_RESTRICT bits = rows[r][i].qs;
+
+                float sumi[4] = {0};
+
+                for (int k = 0; k < 4; k++) {
+                    for (int c = 0; c < 4; ++c) {
+                        const block_q8_0 * GGML_RESTRICT yb = &cols[c][i * 4 + k];
+                        const float d1 = GGML_CPU_FP16_TO_FP32(yb->d);
+                        const int8_t * GGML_RESTRICT qy = yb->qs;
+                        int sumi_block = 0;
+                        for (int b = 0; b < 4; ++b) {
+                            const unsigned mask = bits[k * 4 + b];
+                            const int off = b * 8;
+                            sumi_block += ((mask & 0x01) ? qy[off + 0] : -qy[off + 0])
+                                       +  ((mask & 0x02) ? qy[off + 1] : -qy[off + 1])
+                                       +  ((mask & 0x04) ? qy[off + 2] : -qy[off + 2])
+                                       +  ((mask & 0x08) ? qy[off + 3] : -qy[off + 3])
+                                       +  ((mask & 0x10) ? qy[off + 4] : -qy[off + 4])
+                                       +  ((mask & 0x20) ? qy[off + 5] : -qy[off + 5])
+                                       +  ((mask & 0x40) ? qy[off + 6] : -qy[off + 6])
+                                       +  ((mask & 0x80) ? qy[off + 7] : -qy[off + 7]);
+                        }
+                        sumi[c] += d1 * sumi_block;
+                    }
+                }
+
+                for (int c = 0; c < 4; ++c) {
+                    sum[r*4 + c] += d0 * sumi[c];
+                }
+            }
+        }
+
+        s[0]      = sum[0];  s[1]      = sum[1];  s[2]      = sum[2];  s[3]      = sum[3];
+        s[bs+0]   = sum[4];  s[bs+1]   = sum[5];  s[bs+2]   = sum[6];  s[bs+3]   = sum[7];
+        s[2*bs+0] = sum[8];  s[2*bs+1] = sum[9];  s[2*bs+2] = sum[10]; s[2*bs+3] = sum[11];
+        s[3*bs+0] = sum[12]; s[3*bs+1] = sum[13]; s[3*bs+2] = sum[14]; s[3*bs+3] = sum[15];
+        return;
+    }
+
     UNUSED(nrc);
     UNUSED(bx);
     UNUSED(by);
