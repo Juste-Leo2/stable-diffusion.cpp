@@ -125,14 +125,96 @@ void ggml_vec_dot_q1_0_q8_0_generic(int n, float * GGML_RESTRICT s, size_t bs, c
     const int nb = n / qk;
 
     assert(n % qk == 0);
-    assert(nrc == 1);
+
+    const block_q1_0 * GGML_RESTRICT x  = vx;
+    const block_q8_0 * GGML_RESTRICT y  = vy;
+
+    if (nrc == 2) {
+        const block_q1_0 * GGML_RESTRICT x1 = (const block_q1_0 *)((const char *)vx + bx);
+        const block_q8_0 * GGML_RESTRICT y1 = (const block_q8_0 *)((const char *)vy + by);
+
+        float sum00 = 0.0f, sum10 = 0.0f, sum01 = 0.0f, sum11 = 0.0f;
+
+        for (int i = 0; i < nb; i++) {
+            const float d0_0 = GGML_CPU_FP16_TO_FP32(x[i].d);
+            const float d0_1 = GGML_CPU_FP16_TO_FP32(x1[i].d);
+
+            float sumi_00 = 0.0f, sumi_10 = 0.0f, sumi_01 = 0.0f, sumi_11 = 0.0f;
+
+            for (int k = 0; k < 4; k++) {
+                const block_q8_0 * GGML_RESTRICT yb  = &y[i * 4 + k];
+                const block_q8_0 * GGML_RESTRICT yb1 = &y1[i * 4 + k];
+                const float d1   = GGML_CPU_FP16_TO_FP32(yb->d);
+                const float d1_1 = GGML_CPU_FP16_TO_FP32(yb1->d);
+
+                const uint8_t * GGML_RESTRICT bits   = &x[i].qs[k * 4];
+                const uint8_t * GGML_RESTRICT bits_1 = &x1[i].qs[k * 4];
+                const int8_t  * GGML_RESTRICT qy     = yb->qs;
+                const int8_t  * GGML_RESTRICT qy1    = yb1->qs;
+
+                int sumi_block_00 = 0, sumi_block_10 = 0;
+                int sumi_block_01 = 0, sumi_block_11 = 0;
+
+                for (int b = 0; b < 4; ++b, qy += 8, qy1 += 8) {
+                    const unsigned mask   = bits[b];
+                    const unsigned mask_1 = bits_1[b];
+                    sumi_block_00 += ((mask   & 0x01) ? qy[0] : -qy[0])
+                                  +  ((mask   & 0x02) ? qy[1] : -qy[1])
+                                  +  ((mask   & 0x04) ? qy[2] : -qy[2])
+                                  +  ((mask   & 0x08) ? qy[3] : -qy[3])
+                                  +  ((mask   & 0x10) ? qy[4] : -qy[4])
+                                  +  ((mask   & 0x20) ? qy[5] : -qy[5])
+                                  +  ((mask   & 0x40) ? qy[6] : -qy[6])
+                                  +  ((mask   & 0x80) ? qy[7] : -qy[7]);
+                    sumi_block_10 += ((mask_1 & 0x01) ? qy[0] : -qy[0])
+                                  +  ((mask_1 & 0x02) ? qy[1] : -qy[1])
+                                  +  ((mask_1 & 0x04) ? qy[2] : -qy[2])
+                                  +  ((mask_1 & 0x08) ? qy[3] : -qy[3])
+                                  +  ((mask_1 & 0x10) ? qy[4] : -qy[4])
+                                  +  ((mask_1 & 0x20) ? qy[5] : -qy[5])
+                                  +  ((mask_1 & 0x40) ? qy[6] : -qy[6])
+                                  +  ((mask_1 & 0x80) ? qy[7] : -qy[7]);
+                    sumi_block_01 += ((mask   & 0x01) ? qy1[0] : -qy1[0])
+                                  +  ((mask   & 0x02) ? qy1[1] : -qy1[1])
+                                  +  ((mask   & 0x04) ? qy1[2] : -qy1[2])
+                                  +  ((mask   & 0x08) ? qy1[3] : -qy1[3])
+                                  +  ((mask   & 0x10) ? qy1[4] : -qy1[4])
+                                  +  ((mask   & 0x20) ? qy1[5] : -qy1[5])
+                                  +  ((mask   & 0x40) ? qy1[6] : -qy1[6])
+                                  +  ((mask   & 0x80) ? qy1[7] : -qy1[7]);
+                    sumi_block_11 += ((mask_1 & 0x01) ? qy1[0] : -qy1[0])
+                                  +  ((mask_1 & 0x02) ? qy1[1] : -qy1[1])
+                                  +  ((mask_1 & 0x04) ? qy1[2] : -qy1[2])
+                                  +  ((mask_1 & 0x08) ? qy1[3] : -qy1[3])
+                                  +  ((mask_1 & 0x10) ? qy1[4] : -qy1[4])
+                                  +  ((mask_1 & 0x20) ? qy1[5] : -qy1[5])
+                                  +  ((mask_1 & 0x40) ? qy1[6] : -qy1[6])
+                                  +  ((mask_1 & 0x80) ? qy1[7] : -qy1[7]);
+                }
+
+                sumi_00 += d1   * sumi_block_00;
+                sumi_10 += d1   * sumi_block_10;
+                sumi_01 += d1_1 * sumi_block_01;
+                sumi_11 += d1_1 * sumi_block_11;
+            }
+
+            sum00 += d0_0 * sumi_00;
+            sum10 += d0_1 * sumi_10;
+            sum01 += d0_0 * sumi_01;
+            sum11 += d0_1 * sumi_11;
+        }
+
+        s[0]    = sum00;
+        s[1]    = sum10;
+        s[bs]   = sum01;
+        s[bs+1] = sum11;
+        return;
+    }
+
     UNUSED(nrc);
     UNUSED(bx);
     UNUSED(by);
     UNUSED(bs);
-
-    const block_q1_0 * GGML_RESTRICT x = vx;
-    const block_q8_0 * GGML_RESTRICT y = vy;
 
     float sumf = 0.0;
 
