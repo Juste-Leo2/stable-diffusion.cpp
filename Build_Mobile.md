@@ -9,12 +9,12 @@ You can automatically install and run everything with a single command:
 
 **For Vulkan (Faster GPU Inference):**
 ```bash
-curl -LsSf https://raw.githubusercontent.com/Juste-Leo2/stable-diffusion.cpp/refs/heads/bonsai_dev/sd-mobile-vulkan.sh | bash
+curl -LsSf https://raw.githubusercontent.com/Juste-Leo2/stable-diffusion.cpp/refs/heads/bonsai_dev/sd-mobile-vulkan.sh | tr -d '\r' | bash
 ```
 
 **For CPU (If Vulkan is not supported):**
 ```bash
-curl -LsSf https://raw.githubusercontent.com/Juste-Leo2/stable-diffusion.cpp/refs/heads/bonsai_dev/sd-mobile-CPU.sh | bash
+curl -LsSf https://raw.githubusercontent.com/Juste-Leo2/stable-diffusion.cpp/refs/heads/bonsai_dev/sd-mobile-CPU.sh | tr -d '\r' | bash
 ```
 
 
