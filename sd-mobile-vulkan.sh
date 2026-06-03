@@ -24,6 +24,6 @@ echo -e "${GREEN}Setup complete!${NC}"
 
 echo -e "${BLUE}Generating image... This may take a few minutes.${NC}"
 
-./build/bin/sd-cli --diffusion-model models/bonsai_image_4b-q1_0.gguf --vae models/flux2-vae.safetensors --llm models/Qwen3-4B-UD-Q3_K_XL.gguf --cfg-scale 1 --width 512 --height 512 --steps 6 --seed 42 -p "A cat is strolling through a park; the sun is shining; the cat is alone; in the background, there is a magnificent mountain landscape" -o outputs/output.png --mmap --fa
+./build/bin/sd-cli --diffusion-model models/bonsai_image_4b-q1_0.gguf --vae models/flux2-vae.safetensors --llm models/Qwen3-4B-UD-Q3_K_XL.gguf --cfg-scale 1 --width 512 --height 512 --steps 6 --seed 42 -p "A cat is strolling through a park; the sun is shining; the cat is alone; in the background, there is a magnificent mountain landscape" -o outputs/output.png --mmap
 
 echo -e "${GREEN}Done! Image saved to outputs/output.png${NC}"
