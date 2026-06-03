@@ -93,9 +93,10 @@ Use the compiled binary to run the model:
   --cfg-scale 1 \
   --width 512 \
   --height 512 \
-  --steps 4 \
+  --steps 6 \
   --seed 42 \
-  -p "a cat" \
+  -p "A cat is strolling through a park; the sun is shining; the cat is alone; in the background, there is a magnificent mountain landscape" \
   -o outputs/cat_test.png \
-  --mmap
+  --mmap \
+  --fa
 ```
