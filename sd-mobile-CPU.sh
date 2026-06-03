@@ -9,7 +9,7 @@ echo -e "${BLUE}=== Stable-Diffusion.cpp Termux Setup (CPU) ===${NC}"
 [ ! -d "stable-diffusion.cpp" ] && [ ! -f "build/bin/sd-cli" ] && echo -e "${GREEN}Cloning repository...${NC}" && pkg update -y && pkg upgrade -y && pkg install -y clang cmake git ninja python wget curl && git clone https://github.com/Juste-Leo2/stable-diffusion.cpp && cd stable-diffusion.cpp && git checkout bonsai_dev
 [ -d "stable-diffusion.cpp" ] && cd stable-diffusion.cpp
 
-[ ! -f "build/bin/sd-cli" ] && echo -e "${GREEN}Building the project (CPU)...${NC}" && pkg update -y && pkg upgrade -y && pkg install -y clang cmake git ninja python wget curl && mkdir -p build && cd build && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release && ninja && cd ..
+[ ! -f "build/bin/sd-cli" ] && echo -e "${GREEN}Building the project (CPU)...${NC}" && pkg update -y && pkg upgrade -y && pkg install -y clang cmake git ninja python wget curl && mkdir -p build && cd build && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release && ninja -j 4 && cd ..
 
 echo -e "${GREEN}Checking models...${NC}"
 mkdir -p models outputs

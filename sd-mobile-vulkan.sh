@@ -9,7 +9,7 @@ echo -e "${BLUE}=== Stable-Diffusion.cpp Termux Setup (Vulkan) ===${NC}"
 [ ! -d "stable-diffusion.cpp" ] && [ ! -f "build/bin/sd-cli" ] && echo -e "${GREEN}Cloning repository...${NC}" && pkg update -y && pkg upgrade -y && pkg install -y clang cmake git ninja vulkan-headers vulkan-loader-generic shaderc python spirv-headers wget curl && git clone https://github.com/Juste-Leo2/stable-diffusion.cpp && cd stable-diffusion.cpp && git checkout bonsai_dev
 [ -d "stable-diffusion.cpp" ] && cd stable-diffusion.cpp
 
-[ ! -f "build/bin/sd-cli" ] && echo -e "${GREEN}Building the project (Vulkan)...${NC}" && pkg update -y && pkg upgrade -y && pkg install -y clang cmake git ninja vulkan-headers vulkan-loader-generic shaderc python spirv-headers wget curl && mkdir -p build && cd build && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DSD_VULKAN=ON -DGGML_VULKAN_EMBED_SHADERS=ON -DVulkan_LIBRARY=/system/lib64/libvulkan.so -DVulkan_INCLUDE_DIR=$PREFIX/include -DVulkan_GLSLC_EXECUTABLE=$PREFIX/bin/glslc && ninja && cd ..
+[ ! -f "build/bin/sd-cli" ] && echo -e "${GREEN}Building the project (Vulkan)...${NC}" && pkg update -y && pkg upgrade -y && pkg install -y clang cmake git ninja vulkan-headers vulkan-loader-generic shaderc python spirv-headers wget curl && mkdir -p build && cd build && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DSD_VULKAN=ON -DGGML_VULKAN_EMBED_SHADERS=ON -DVulkan_LIBRARY=/system/lib64/libvulkan.so -DVulkan_INCLUDE_DIR=$PREFIX/include -DVulkan_GLSLC_EXECUTABLE=$PREFIX/bin/glslc && ninja -j 4 && cd ..
 
 echo -e "${GREEN}Checking models...${NC}"
 mkdir -p models outputs
